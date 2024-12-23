@@ -36,22 +36,23 @@ const enableButtons = () => {
         element.disabled = false;
     });
     popupRef.classList.add("hide");
+    messageRef.innerHTML = ""; // Clear message
 };
 
 // Win function
 const winFunction = (letter) => {
     disableButtons();
     if (letter == "X") {
-        messageRef.innerHTML = "&#x1F389 <br> 'X' Wins";
+        messageRef.innerHTML = "&#x1F389 <br> 'X' Wins!";
     } else {
-        messageRef.innerHTML = "&#x1F389 <br> 'O' Wins";
+        messageRef.innerHTML = "&#x1F389 <br> 'O' Wins!";
     }
 };
 
 // Draw function
 const drawFunction = () => {
     disableButtons();
-    messageRef.innerHTML = "&#x1F60E; <br> It is a Draw";
+    messageRef.innerHTML = "&#x1F60E; <br> It's a Draw!";
 };
 
 // Check for a win
@@ -74,27 +75,89 @@ const winChecker = () => {
     return false;
 };
 
-// CPU move (easy level: random)
-const cpuMove = () => {
-    let available = [];
+// Evaluate the game state
+const evaluateBoard = () => {
+    for (let pattern of winningPattern) {
+        let [a, b, c] = pattern;
+        if (
+            buttonsRef[a].innerText &&
+            buttonsRef[a].innerText === buttonsRef[b].innerText &&
+            buttonsRef[a].innerText === buttonsRef[c].innerText
+        ) {
+            return buttonsRef[a].innerText === "O" ? 10 : -10;
+        }
+    }
+    return 0;
+};
+
+// Check if moves are left
+const isMovesLeft = () => {
+    return [...buttonsRef].some((button) => button.innerText === "");
+};
+
+// Minimax Algorithm
+const minimax = (isMaximizing) => {
+    let score = evaluateBoard();
+
+    if (score === 10) return score; // CPU Wins
+    if (score === -10) return score; // Player Wins
+    if (!isMovesLeft()) return 0; // Draw
+
+    if (isMaximizing) {
+        let best = -Infinity;
+        buttonsRef.forEach((button) => {
+            if (button.innerText === "") {
+                button.innerText = "O";
+                best = Math.max(best, minimax(false));
+                button.innerText = "";
+            }
+        });
+        return best;
+    } else {
+        let best = Infinity;
+        buttonsRef.forEach((button) => {
+            if (button.innerText === "") {
+                button.innerText = "X";
+                best = Math.min(best, minimax(true));
+                button.innerText = "";
+            }
+        });
+        return best;
+    }
+};
+
+// Find the best move
+const findBestMove = () => {
+    let bestVal = -Infinity;
+    let bestMove = -1;
+
     buttonsRef.forEach((button, index) => {
         if (button.innerText === "") {
-            available.push(index);
+            button.innerText = "O";
+            let moveVal = minimax(false);
+            button.innerText = "";
+
+            if (moveVal > bestVal) {
+                bestVal = moveVal;
+                bestMove = index;
+            }
         }
     });
 
-    if (available.length > 0) {
-        // Choose a random available index
-        let randomIndex = available[Math.floor(Math.random() * available.length)];
-        buttonsRef[randomIndex].innerText = "O";
-        buttonsRef[randomIndex].disabled = true;
+    return bestMove;
+};
+
+// CPU Move (Hard Difficulty)
+const cpuMove = () => {
+    let bestMove = findBestMove();
+
+    if (bestMove !== -1) {
+        buttonsRef[bestMove].innerText = "O";
+        buttonsRef[bestMove].disabled = true;
         count++;
-        if (count === 9) {
-            drawFunction();
-        } else if (winChecker()) {
-            return;
-        }
-        xTurn = true; // Give control back to player
+        if (winChecker()) return;
+        if (count === 9) drawFunction();
+        xTurn = true; // Hand back control to player
     }
 };
 
